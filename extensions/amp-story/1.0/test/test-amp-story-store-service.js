@@ -22,7 +22,6 @@ import {
 } from '../amp-story-store-service';
 import {EmbedMode, EmbedModeParam} from '../embed-mode';
 
-
 describes.fakeWin('amp-story-store-service', {}, env => {
   let storeService;
 
@@ -113,7 +112,7 @@ describes.fakeWin('amp-story-store-service actions', {}, env => {
   it('should toggle the desktop state when setting a UI State', () => {
     const listenerSpy = sandbox.spy();
     storeService.subscribe(StateProperty.DESKTOP_STATE, listenerSpy);
-    storeService.dispatch(Action.TOGGLE_UI, UIType.DESKTOP);
+    storeService.dispatch(Action.TOGGLE_UI, UIType.DESKTOP_PANELS);
     expect(listenerSpy).to.have.been.calledOnce;
     expect(listenerSpy).to.have.been.calledWith(true);
   });
@@ -148,10 +147,10 @@ describes.fakeWin('amp-story-store-service actions', {}, env => {
     expect(listenerSpy).to.have.been.calledWith(true);
   });
 
-  it('should toggle the landscape state', () => {
+  it('should toggle the viewport warning state', () => {
     const listenerSpy = sandbox.spy();
-    storeService.subscribe(StateProperty.LANDSCAPE_STATE, listenerSpy);
-    storeService.dispatch(Action.TOGGLE_LANDSCAPE, true);
+    storeService.subscribe(StateProperty.VIEWPORT_WARNING_STATE, listenerSpy);
+    storeService.dispatch(Action.TOGGLE_VIEWPORT_WARNING, true);
     expect(listenerSpy).to.have.been.calledOnce;
     expect(listenerSpy).to.have.been.calledWith(true);
   });
@@ -231,5 +230,41 @@ describes.fakeWin('amp-story-store-service actions', {}, env => {
 
     // PAUSED_STATE did not get affected.
     expect(storeService.get(StateProperty.PAUSED_STATE)).to.be.true;
+  });
+
+  it('should add an action to the whitelist', () => {
+    const action1 = {tagOrTarget: 'foo', method: 1};
+    const action2 = {tagOrTarget: 'foo', method: 2};
+
+    storeService.dispatch(Action.ADD_TO_ACTIONS_WHITELIST, action1);
+
+    const actionsListenerSpy = sandbox.spy();
+    storeService.subscribe(StateProperty.ACTIONS_WHITELIST, actionsListenerSpy);
+
+    storeService.dispatch(Action.ADD_TO_ACTIONS_WHITELIST, action2);
+
+    expect(actionsListenerSpy).to.have.been.calledOnceWithExactly([
+      action1,
+      action2,
+    ]);
+  });
+
+  it('should add an array of actions to the whitelist', () => {
+    const action1 = {tagOrTarget: 'foo', method: 1};
+    const action2 = {tagOrTarget: 'foo', method: 2};
+    const action3 = {tagOrTarget: 'foo', method: 3};
+
+    storeService.dispatch(Action.ADD_TO_ACTIONS_WHITELIST, action1);
+
+    const actionsListenerSpy = sandbox.spy();
+    storeService.subscribe(StateProperty.ACTIONS_WHITELIST, actionsListenerSpy);
+
+    storeService.dispatch(Action.ADD_TO_ACTIONS_WHITELIST, [action2, action3]);
+
+    expect(actionsListenerSpy).to.have.been.calledOnceWithExactly([
+      action1,
+      action2,
+      action3,
+    ]);
   });
 });

@@ -15,29 +15,60 @@
  */
 'use strict';
 
-
+const api = require('./api/api');
+const basepathMappings = require('./basepath-mappings');
 const BBPromise = require('bluebird');
 const fs = BBPromise.promisifyAll(require('fs'));
+const path = require('path');
+const {
+  getListing,
+  isMainPageFromUrl,
+  formatBasepath,
+} = require('./util/listing');
+const {join} = require('path');
+const {renderTemplate} = require('./template');
 
+const pc = process;
 
-// TODO(alanorozco): Use JSX once we're ready.
-const templateFile = 'build-system/app-index/template.html';
+// Sitting on /build-system/app-index, so we go back twice for the repo root.
+const root = path.join(__dirname, '../../');
 
+// CSS
+const mainCssFile = join(__dirname, '/main.css');
 
-function renderFileLink(base, location) {
-  return `<li><a href="${base}/${location}">${location}</a></li>`;
+async function serveIndex({url}, res, next) {
+  const mappedPath = basepathMappings[url] || url;
+  const fileSet = await getListing(root, mappedPath);
+
+  if (fileSet == null) {
+    return next();
+  }
+
+  const css = (await fs.readFileAsync(mainCssFile)).toString();
+
+  const renderedHtml = renderTemplate({
+    fileSet,
+    selectModePrefix: '/',
+    isMainPage: isMainPageFromUrl(url),
+    basepath: formatBasepath(mappedPath),
+    serveMode: pc.env.SERVE_MODE || 'default',
+    css,
+  });
+
+  res.end(renderedHtml);
+
+  return renderedHtml; // for testing
 }
 
+function installExpressMiddleware(app) {
+  api.installExpressMiddleware(app);
 
-function renderIndex(req, res) {
-  Promise.all([fs.readdirAsync('./examples/'), fs.readFileAsync(templateFile)])
-      .then(result => {
-        const files = result[0];
-        const template = result[1].toString();
-
-        res.end(template.replace('<!-- examples -->',
-            files.map(file => renderFileLink('/examples', file)).join('')));
-      });
+  app.get(['/', '/*'], serveIndex);
 }
 
-module.exports = renderIndex;
+module.exports = {
+  installExpressMiddleware,
+
+  // To be tested but not be exported for use.
+  serveIndexForTesting: serveIndex,
+};

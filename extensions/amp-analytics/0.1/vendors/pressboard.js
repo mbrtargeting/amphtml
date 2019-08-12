@@ -25,19 +25,22 @@ export const PRESSBOARD_CONFIG = /** @type {!JsonObject} */ ({
     'city': '',
     'dbInstance': '',
     'timeZoneOffset': '',
+    'clientId': 'CLIENT_ID(_pressboardmedia)',
   },
   'requests': {
     'host': 'https://adserver.pressboard.ca',
-    'common_params': '&amp=1&url=${canonicalUrl}' +
+    'common_params':
+      '&amp=1&url=${canonicalUrl}' +
       '&referrer=${documentReferrer}' +
       '&ts=${timestamp}' +
       '&ua=${userAgent}' +
       '&rand=${random}' +
-      '&uid=${clientId(_pressboardmedia)}' +
+      '&uid=${clientId}' +
       '&mid=${mediaId}&cid=${campaignId}&sid=${storyRequestId}' +
       '&geoid=${geoNameId}&cn=${country}&rg=${region}&ct=${city}' +
       '&dbi=${dbInstance}&tz=${timeZoneOffset}',
-    'conversion_params': '&hbt=${requestCount}' +
+    'conversion_params':
+      '&hbt=${requestCount}' +
       '&pvid=${pageViewId}' +
       '&asurl=${sourceUrl}' +
       '&ash=${scrollHeight}' +
@@ -46,7 +49,8 @@ export const PRESSBOARD_CONFIG = /** @type {!JsonObject} */ ({
       '&avh=${viewportHeight}' +
       '&ast=${scrollTop}' +
       '&atet=${totalEngagedTime}',
-    'conversion': '${host}' +
+    'conversion':
+      '${host}' +
       '/track/attention-amp?' +
       '${common_params}' +
       '${conversion_params}',
