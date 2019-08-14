@@ -119,6 +119,12 @@ exports.extensionBundles = [
     type: TYPES.AD,
   },
   {
+    name: 'amp-ad-network-fakedfp-impl',
+    version: '0.1',
+    latestVersion: '0.1',
+    type: TYPES.AD,
+  },
+  {
     name: 'amp-ad-network-triplelift-impl',
     version: '0.1',
     latestVersion: '0.1',

@@ -180,6 +180,8 @@ exports.rules = [
       'ads/_a4a-config.js->' +
         'extensions/amp-ad-network-fake-impl/0.1/fake-a4a-config.js',
       'ads/_a4a-config.js->' +
+        'extensions/amp-ad-network-fakedfp-impl/0.1/fakedfp-a4a-config.js',
+      'ads/_a4a-config.js->' +
         'extensions/amp-ad-network-triplelift-impl/0.1/triplelift-a4a-config.js',
       'ads/_a4a-config.js->' +
         'extensions/amp-ad-network-cloudflare-impl/0.1/cloudflare-a4a-config.js',
@@ -201,6 +203,7 @@ exports.rules = [
     whitelist: [
       // a4a ads depend on a4a.
       'extensions/amp-ad-network-fake-impl/0.1/amp-ad-network-fake-impl.js->extensions/amp-a4a/0.1/amp-a4a.js',
+      'extensions/amp-ad-network-fakedfp-impl/0.1/amp-ad-network-fakedfp-impl.js->extensions/amp-a4a/0.1/amp-a4a.js',
       'extensions/amp-ad-network-gmossp-impl/0.1/amp-ad-network-gmossp-impl.js->extensions/amp-a4a/0.1/amp-a4a.js',
       'extensions/amp-ad-network-triplelift-impl/0.1/amp-ad-network-triplelift-impl.js->extensions/amp-a4a/0.1/amp-a4a.js',
       'extensions/amp-ad-network-cloudflare-impl/0.1/amp-ad-network-cloudflare-impl.js->extensions/amp-a4a/0.1/amp-a4a.js',

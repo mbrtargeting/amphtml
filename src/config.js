@@ -38,7 +38,7 @@ export const urls = {
   thirdParty: env['thirdPartyUrl'] || 'https://3p.ampproject.net',
   thirdPartyFrameHost: env['thirdPartyFrameHost'] || 'ampproject.net',
   thirdPartyFrameRegex: thirdPartyFrameRegex || /^d-\d+\.ampproject\.net$/,
-  cdn: env['cdnUrl'] || 'https://cdn.ampproject.org',
+  cdn: env['cdnUrl'] || /*'https://cdn.ampproject.org'*/ '//localhost:6673',
   /* Note that cdnProxyRegex is only ever checked against origins
    * (proto://host[:port]) so does not need to consider path
    */

@@ -15,6 +15,7 @@
  */
 
 import {cloudflareIsA4AEnabled} from '../extensions/amp-ad-network-cloudflare-impl/0.1/cloudflare-a4a-config';
+// import {fakedfpIsA4AEnabled} from '../extensions/amp-ad-network-fakedfp-impl/0.1/fakedfp-a4a-confg';
 import {gmosspIsA4AEnabled} from '../extensions/amp-ad-network-gmossp-impl/0.1/gmossp-a4a-config';
 import {map} from '../src/utils/object';
 import {tripleliftIsA4AEnabled} from '../extensions/amp-ad-network-triplelift-impl/0.1/triplelift-a4a-config';
@@ -48,6 +49,8 @@ export function getA4ARegistry() {
       'cloudflare': cloudflareIsA4AEnabled,
       'gmossp': gmosspIsA4AEnabled,
       'fake': () => true,
+      // 'fakedfp': fakedfpIsA4AEnabled,
+      'fakedfp': () => true,
       // TODO: Add new ad network implementation "is enabled" functions here.
       // Note: if you add a function here that requires a new "import", above,
       // you'll probably also need to add a whitelist exception to

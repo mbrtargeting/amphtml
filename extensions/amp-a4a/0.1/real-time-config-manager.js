@@ -528,7 +528,7 @@ export class RealTimeConfigManager {
    * @return {boolean}
    */
   validateRtcConfig_(element) {
-    const defaultTimeoutMillis = 1000;
+    const defaultTimeoutMillis = 2000;
     const unparsedRtcConfig = element.getAttribute('rtc-config');
     if (!unparsedRtcConfig) {
       return false;

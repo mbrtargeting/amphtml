@@ -897,7 +897,7 @@ export class AmpA4A extends AMP.BaseElement {
     return this.keysetPromise_
       .then(() => {
         if (
-          this.element.getAttribute('type') == 'fake' &&
+          (this.element.getAttribute('type') == 'fake' || this.element.getAttribute('type') == 'fakeDfp') &&
           !this.element.getAttribute('checksig')
         ) {
           // do not verify signature for fake type ad, unless the ad
