@@ -16,7 +16,7 @@
   },
   "scripts": {
     "preinstall": "node build-system/check-package-manager.js",
-    "dist": "gulp dist --single_pass"
+    "dist": "gulp dist --single_pass --disable_nailgun"
   },
   "dependencies": {
     "@ampproject/animations": "0.2.0",
