@@ -4,8 +4,7 @@ import {Deferred} from '../../../src/utils/promise';
 import {buildUrl} from './../../../ads/google/a4a/shared/url-builder';
 
 /** @const {string} */
-// const FAKEDFP_BASE_URL = 'https://fakedfp.lsd.test/ads';
-const FAKEDFP_BASE_URL = 'http://localhost:8005/ads';
+const FAKEDFP_BASE_URL = 'https://prebid-support.lsd.test/ads';
 
 function serializeItem_(key, value) {
   const serializedValue = (Array.isArray(value) ? value : [value])
