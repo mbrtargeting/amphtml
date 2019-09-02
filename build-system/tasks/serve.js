@@ -34,8 +34,9 @@ const noCachingExtensions = argv.noCachingExtensions != undefined;
 
 /**
  * Starts a simple http server at the repository root
+ * @param {boolean} lazyBuild
  */
-function serve() {
+function serve(lazyBuild) {
   createCtrlcHandler('serve');
 
   // Get the serve mode
@@ -69,6 +70,7 @@ function serve() {
       path.dirname(require.resolve('../app-index')),
     ],
     env: {
+      // TODO(rsimha): Improve the cross-process message passing being done here
       'NODE_ENV': 'development',
       'SERVE_PORT': port,
       'SERVE_HOST': host,
@@ -77,6 +79,8 @@ function serve() {
       'SERVE_QUIET': quiet,
       'SERVE_CACHING_HEADERS': sendCachingHeaders,
       'SERVE_EXTENSIONS_WITHOUT_CACHING': noCachingExtensions,
+      'LAZY_BUILD': lazyBuild,
+      'ARGV': process.argv,
     },
     stdout: !quiet,
   };

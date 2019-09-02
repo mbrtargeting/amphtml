@@ -48,6 +48,8 @@ goog.require('amp.validator.ValidationError.Severity');
 goog.require('amp.validator.ValidationResult');
 goog.require('amp.validator.ValidationResult.Status');
 goog.require('amp.validator.ValidatorRules');
+goog.require('amp.validator.ValueSetProvision');
+goog.require('amp.validator.ValueSetRequirement');
 goog.require('amp.validator.createRules');
 goog.require('goog.array');
 goog.require('goog.asserts');
@@ -950,20 +952,6 @@ amp.validator.ValidationResult.prototype.mergeFrom = function(other) {
 };
 
 /**
- * Copies results from another ValidationResult.
- * @param {!amp.validator.ValidationResult} other
- */
-amp.validator.ValidationResult.prototype.copyFrom = function(other) {
-  goog.asserts.assert(this.status !== null);
-  goog.asserts.assert(other.status !== null);
-  this.status = other.status;
-  const newErrors = [];
-  Array.prototype.push.apply(newErrors, other.errors);
-  this.errors = newErrors;
-};
-
-
-/**
  * The child tag matcher evaluates ChildTagSpec. The constructor
  * provides the enclosing TagSpec for the parent tag so that we can
  * produce error messages mentioning the parent.
@@ -1149,7 +1137,7 @@ class ReferencePointMatcher {
    */
   validateTag(tag, context) {
     // Look for a matching reference point, if we find one, record and exit.
-    const resultForBestAttempt = new amp.validator.ValidationResult();
+    let resultForBestAttempt = new amp.validator.ValidationResult();
     resultForBestAttempt.status = amp.validator.ValidationResult.Status.UNKNOWN;
     for (const p of this.parsedReferencePoints_.iterate()) {
       // p.tagSpecName here is actually a number, which was replaced in
@@ -1165,7 +1153,7 @@ class ReferencePointMatcher {
           parsedTagSpec, /*bestMatchReferencePoint=*/null, context, tag);
       if (context.getRules().betterValidationResultThan(
           resultForAttempt, resultForBestAttempt))
-      {resultForBestAttempt.copyFrom(resultForAttempt);}
+      {resultForBestAttempt = resultForAttempt;}
       if (resultForBestAttempt.status ===
           amp.validator.ValidationResult.Status.PASS) {
         return {
@@ -1518,7 +1506,7 @@ class TagStack {
   }
 
   /**
-   * Records that tag currently on the stack is using ampdevmode.
+   * Records that tag currently on the stack is using data-ampdevmode.
    */
   setDevMode() {
     this.back_().devMode = true;
@@ -2009,7 +1997,7 @@ class CdataMatcher {
     }
 
     // Max CDATA Byte Length
-    if (cdataSpec.maxBytes !== -1 && adjustedCdataLength > cdataSpec.maxBytes) {
+    if (cdataSpec.maxBytes !== -2 && adjustedCdataLength > cdataSpec.maxBytes) {
       context.addError(
           amp.validator.ValidationError.Code.STYLESHEET_TOO_LONG,
           context.getLineCol(),
@@ -2203,7 +2191,7 @@ class CdataMatcher {
 let ExtensionMissingError;
 
 /**
- * The extensions context keeys track of the extensions that the validator has
+ * The extensions context keeps track of the extensions that the validator has
  * seen, as well as which have been used, which are required to be used, etc.
  * @private
  */
@@ -2433,6 +2421,20 @@ class Context {
     this.typeIdentifiers_ = [];
 
     /**
+     * All the value set provisions so far.
+     * @type {!Set<string>}
+     * @private
+     */
+    this.valueSetsProvided_ = new Set;
+
+    /**
+     * All the value set requirements so far.
+     * @type {!Map<string, !Array<!amp.validator.ValidationError>>}
+     * @private
+     */
+    this.valueSetsRequired_ = new Map;
+
+    /**
      * Set of conditions that we've satisfied.
      * @type {!Array<boolean>}
      * @private
@@ -2556,12 +2558,35 @@ class Context {
     this.satisfyMandatoryAlternativesFromTagSpec_(parsedTagSpec);
     this.recordValidatedFromTagSpec_(parsedTagSpec);
 
+    const {validationResult} = result;
+    for (const provision of validationResult.valueSetProvisions)
+      this.valueSetsProvided_.add(this.keyFromValueSetProvision_(provision));
+    for (const requirement of validationResult.valueSetRequirements) {
+      if (!requirement.provision) continue;
+      const key = this.keyFromValueSetProvision_(requirement.provision);
+      let errors = this.valueSetsRequired_.get(key);
+      if (!errors) {
+        errors = [];
+        this.valueSetsRequired_.set(key, errors);
+      }
+      errors.push(requirement.errorIfUnsatisfied);
+    }
+
     if (result.validationResult.status ===
         amp.validator.ValidationResult.Status.PASS) {
       // If the tag spec didn't match, we don't know that the tag actually
       // contained a URL, so no need to complain about it.
       this.markUrlSeenFromMatchingTagSpec_(parsedTagSpec);
     }
+  }
+
+  /**
+   * @param {!amp.validator.ValueSetProvision} provision
+   * @return {string} A key for valueSetsProvided_ and valueSetsRequired_.
+   * @private
+   */
+  keyFromValueSetProvision_(provision) {
+    return (provision.set || '') + ">" + (provision.value || '');
   }
 
   /**
@@ -2741,11 +2766,29 @@ class Context {
   }
 
   /**
-   * Returns true iff "ampdevmode" is a type identifier in this document.
+   * Returns true iff "data-ampdevmode" is a type identifier in this document.
    * @return {boolean}
    */
   isDevMode() {
-    return this.typeIdentifiers_.includes('ampdevmode');
+    return this.typeIdentifiers_.includes('data-ampdevmode');
+  }
+
+  /**
+   * Returns all the value set provisions so far, as a set of derived keys, as
+   * computed by keyFromValueSetProvision_().
+   * @return {!Set<string>}
+   */
+  valueSetsProvided() {
+    return this.valueSetsProvided_;
+  }
+
+  /**
+   * Returns all the value set requirements so far, keyed by derived keys, as
+   * computed by getValueSetProvisionKey().
+   * @return {!Map<string, !Array<!amp.validator.ValidationError>>}
+   */
+  valueSetsRequired() {
+    return this.valueSetsRequired_;
   }
 
   /**
@@ -3152,6 +3195,25 @@ function validateNonTemplateAttrValueAgainstSpec(
   // added after protobuf 2.5.0 (which our open-source version uses).
   // begin oneof {
   const spec = parsedAttrSpec.getSpec();
+  if (spec.addValueToSet !== null) {
+    let provision = new amp.validator.ValueSetProvision;
+    provision.set = spec.addValueToSet;
+    provision.value = attr.value;
+    result.valueSetProvisions.push(provision);
+  }
+  if (spec.valueOneofSet !== null) {
+    let requirement = new amp.validator.ValueSetRequirement;
+    requirement.provision = new amp.validator.ValueSetProvision;
+    requirement.provision.set = spec.valueOneofSet;
+    requirement.provision.value = attr.value;
+    requirement.errorIfUnsatisfied = populateError(
+        amp.validator.ValidationError.Severity.ERROR,
+        amp.validator.ValidationError.Code.VALUE_SET_MISMATCH,
+        context.getLineCol(),
+        /* params */[attr.name, getTagSpecName(tagSpec)],
+        getTagSpecUrl(tagSpec));
+    result.valueSetRequirements.push(requirement);
+  }
   if (spec.value.length > 0) {
     for (const value of spec.value) {
       if (attr.value === value) {
@@ -4252,19 +4314,19 @@ function validateAttrDeclaration(
 
 /**
  * Returns true if errors reported on this tag should be suppressed, due to
- * ampdevmode annotations.
+ * data-ampdevmode annotations.
  * @param {!amp.htmlparser.ParsedHtmlTag} encounteredTag
  * @param {!Context} context
  * @return {boolean}
  */
 function ShouldSuppressDevModeErrors(encounteredTag, context) {
   if (!context.isDevMode()) return false;
-  // Cannot suppress errors on HTML tag. The "ampdevmode" here is a
+  // Cannot suppress errors on HTML tag. The "data-ampdevmode" here is a
   // type identifier. Suppressing errors here would suppress all errors since
   // HTML is the root of the document.
   if (encounteredTag.upperName() === 'HTML') return false;
   for (const attr of encounteredTag.attrs()) {
-    if (attr.name === 'ampdevmode') return true;
+    if (attr.name === 'data-ampdevmode') return true;
   }
   return context.getTagStack().isDevMode();
 }
@@ -4767,6 +4829,9 @@ function validateTagAgainstSpec(
  * specification must validate, or the result will have status FAIL.
  * Also passes back a reference to the tag spec which matched, if a match
  * was found.
+ * Context is not mutated; instead, pending mutations are stored in the return
+ * value, and are merged only if the tag spec is applied (pending some reference
+ * point stuff).
  * @param {!amp.htmlparser.ParsedHtmlTag} encounteredTag
  * @param {?ParsedTagSpec} bestMatchReferencePoint
  * @param {!Context} context
@@ -4834,12 +4899,12 @@ function validateTag(encounteredTag, bestMatchReferencePoint, context) {
             context.getTypeIdentifiers())) {
           continue;
         }
-        let result_for_attempt = validateTagAgainstSpec(
+        let resultForAttempt = validateTagAgainstSpec(
             parsedTagSpec, bestMatchReferencePoint, context, encounteredTag);
         if (context.getRules().betterValidationResultThan(
-                result_for_attempt, ret.validationResult)) {
+                resultForAttempt, ret.validationResult)) {
           ret.bestMatchTagSpec = parsedTagSpec;
-          ret.validationResult = result_for_attempt;
+          ret.validationResult = resultForAttempt;
           // Exit early on success
           if (ret.validationResult.status ===
               amp.validator.ValidationResult.Status.PASS) {
@@ -4879,7 +4944,7 @@ function validateTag(encounteredTag, bestMatchReferencePoint, context) {
   // return errors from a single tagspec, not all of them. We keep around
   // the 'best' attempt until we have found a matching TagSpec or have
   // tried them all.
-  const resultForBestAttempt = new amp.validator.ValidationResult();
+  let resultForBestAttempt = new amp.validator.ValidationResult();
   resultForBestAttempt.status = amp.validator.ValidationResult.Status.UNKNOWN;
   let bestMatchTagSpec = null;
   for (const parsedTagSpec of filteredTagSpecs) {
@@ -4887,7 +4952,7 @@ function validateTag(encounteredTag, bestMatchReferencePoint, context) {
         parsedTagSpec, bestMatchReferencePoint, context, encounteredTag);
     if (context.getRules().betterValidationResultThan(
         resultForAttempt, resultForBestAttempt)) {
-      resultForBestAttempt.copyFrom(resultForAttempt);
+      resultForBestAttempt = resultForAttempt;
       bestMatchTagSpec = parsedTagSpec;
       // Exit early
       if (resultForBestAttempt.status ===
@@ -4979,7 +5044,7 @@ class ParsedValidatorRules {
     this.typeIdentifiers_['amp4email'] = 0;
     this.typeIdentifiers_['actions'] = 0;
     this.typeIdentifiers_['transformed'] = 0;
-    this.typeIdentifiers_['ampdevmode'] = 0;
+    this.typeIdentifiers_['data-ampdevmode'] = 0;
 
     /**
      * @type {function(!amp.validator.TagSpec) : boolean}
@@ -5191,7 +5256,7 @@ class ParsedValidatorRules {
           // mandatory unlike other type identifiers.
           if (typeIdentifier !== 'actions' &&
               typeIdentifier !== 'transformed' &&
-              typeIdentifier !== 'ampdevmode') {
+              typeIdentifier !== 'data-ampdevmode') {
             hasMandatoryTypeIdentifier = true;
           }
           // The type identifier "transformed" has restrictions on it's value.
@@ -5209,7 +5274,7 @@ class ParsedValidatorRules {
                   validationResult);
             }
           }
-          if (typeIdentifier === 'ampdevmode') {
+          if (typeIdentifier === 'data-ampdevmode') {
             // https://github.com/ampproject/amphtml/issues/20974
             // We always emit an error for this type identifier, but it
             // suppresses other errors later in the document.
@@ -5248,23 +5313,23 @@ class ParsedValidatorRules {
     switch (this.htmlFormat_) {
       case 'AMP':
         this.validateTypeIdentifiers(
-            htmlTag.attrs(), ['⚡', 'amp', 'transformed', 'ampdevmode'], context,
-            validationResult);
+            htmlTag.attrs(), ['⚡', 'amp', 'transformed', 'data-ampdevmode'],
+            context, validationResult);
         break;
       case 'AMP4ADS':
         this.validateTypeIdentifiers(
-            htmlTag.attrs(), ['⚡4ads', 'amp4ads', 'ampdevmode'], context,
+            htmlTag.attrs(), ['⚡4ads', 'amp4ads', 'data-ampdevmode'], context,
             validationResult);
         break;
       case 'AMP4EMAIL':
         this.validateTypeIdentifiers(
-            htmlTag.attrs(), ['⚡4email', 'amp4email', 'ampdevmode'], context,
-            validationResult);
+            htmlTag.attrs(), ['⚡4email', 'amp4email', 'data-ampdevmode'],
+            context, validationResult);
         break;
       case 'ACTIONS':
         this.validateTypeIdentifiers(
-            htmlTag.attrs(), ['⚡', 'amp', 'actions', 'ampdevmode'], context,
-            validationResult);
+            htmlTag.attrs(), ['⚡', 'amp', 'actions', 'data-ampdevmode'],
+            context,  validationResult);
         if (validationResult.typeIdentifier.indexOf('actions') === -1) {
           context.addError(
               amp.validator.ValidationError.Code.MANDATORY_ATTR_MISSING,
@@ -5536,13 +5601,29 @@ class ParsedValidatorRules {
       if (!this.isCssLengthSpecCorrectHtmlFormat_(cssLengthSpec)) {
         continue;
       }
-      if (cssLengthSpec.maxBytes && bytesUsed > cssLengthSpec.maxBytes) {
+      if (cssLengthSpec.maxBytes !== -2 && bytesUsed > cssLengthSpec.maxBytes) {
         context.addError(
             amp.validator.ValidationError.Code
                 .STYLESHEET_AND_INLINE_STYLE_TOO_LONG,
             context.getLineCol(), /* params */
             [bytesUsed.toString(), cssLengthSpec.maxBytes.toString()],
             /* specUrl */ cssLengthSpec.specUrl, validationResult);
+      }
+    }
+  }
+
+  /**
+   * Emits errors when there is a ValueSetRequirement with no matching
+   * ValueSetProvision in the document.
+   * @param {!Context} context
+   * @param {!amp.validator.ValidationResult} validationResult
+   */
+  maybeEmitValueSetMismatchErrors(context, validationResult) {
+    const providedKeys = context.valueSetsProvided();
+    for (const [requiredKey, errors] of context.valueSetsRequired()) {
+      if (!providedKeys.has(/** @type {string} */(requiredKey))) {
+        for (const error of errors)
+          context.addBuiltError(error, validationResult);
       }
     }
   }
@@ -5559,6 +5640,7 @@ class ParsedValidatorRules {
     this.maybeEmitMandatoryAlternativesSatisfiedErrors(
         context, validationResult);
     this.maybeEmitCssLengthSpecErrors(context, validationResult);
+    this.maybeEmitValueSetMismatchErrors(context, validationResult);
   }
 
   /**
@@ -5833,7 +5915,7 @@ amp.validator.ValidationHandler =
           this.context_.addInlineStyleByteSize(styleLen);
           for (const cssLengthSpec of this.context_.getRules()
                    .getCssLengthSpec()) {
-            if (cssLengthSpec.maxBytesPerInlineStyle !== undefined &&
+            if (cssLengthSpec.maxBytesPerInlineStyle !== -1 &&
                 styleLen > cssLengthSpec.maxBytesPerInlineStyle) {
               this.context_.addError(
                   amp.validator.ValidationError.Code.INLINE_STYLE_TOO_LONG,
