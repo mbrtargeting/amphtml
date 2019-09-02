@@ -15,7 +15,7 @@
  */
 
 @import './amp-story-access.css';
-@import './amp-story-bling-link.css';
+@import './amp-story-affiliate-link.css';
 @import './amp-story-desktop-panels.css';
 @import './amp-story-draggable-drawer.css';
 @import './amp-story-templates.css';
@@ -38,6 +38,14 @@ amp-consent {
   width: 100% !important;
   background: none !important;
   z-index: initial !important;
+}
+
+/**
+ * amp-hidden uses visiblity: hidden that does not propagate to shadow trees
+ * because of amp-story-shadow-reset.css. Use display: none instead.
+ */
+amp-consent.amp-hidden {
+  display: none !important;
 }
 
 .i-amphtml-story-system-reset,
@@ -293,11 +301,11 @@ amp-story-page [data-text-background-color] {
   bottom: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  opacity: 0.75 !important;
+  opacity: 1 !important;
   display: block !important;
   /* Prevent someone from making this a full-screen image */
   background-image: none !important;
-  background-color: #000 !important;
+  background-color: rgba(0, 0, 0, 0.75) !important;
   visibility: visible;
   z-index: 100003 !important;
   transition: visibility 0.3s, opacity 0.3s cubic-bezier(0.0, 0.0, 0.2, 1) !important;
