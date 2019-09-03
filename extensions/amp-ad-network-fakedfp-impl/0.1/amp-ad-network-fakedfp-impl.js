@@ -45,7 +45,6 @@ export class AmpAdNetworkFakedfpImpl extends AmpA4A {
   getAdUrl(unusedConsentState, opt_rtcResponsesPromise) {
     opt_rtcResponsesPromise = opt_rtcResponsesPromise || Promise.resolve();
     opt_rtcResponsesPromise.then(result => {
-      window.thing = result[0];
 
       // Example successful response: {"response":{"targeting":{"hb_bidder":"stroeerCore","hb_cache_id":"0195991b-b143-4e8a-8289-b5e29670a601","hb_pb":"3.20","hb_size":"300x250"}},"rtcTime":878,"callout":"localhost/openrtb2/amp"}
       // Example error response: {"error":"10","callout":"localhost/openrtb2/amp","rtcTime":878}
