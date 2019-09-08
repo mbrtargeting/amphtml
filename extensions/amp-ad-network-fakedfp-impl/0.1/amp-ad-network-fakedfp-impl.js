@@ -63,12 +63,10 @@ export class AmpAdNetworkFakedfpImpl extends AmpA4A {
 
   /** @override */
   sendXhrRequest(adUrl) {
-    console.log('Send XHR request');
     return super.sendXhrRequest(adUrl);
   }
 }
 
 AMP.extension('amp-ad-network-fakedfp-impl', '0.1', AMP => {
-  console.log("YES, I'm In!");
   AMP.registerElement('amp-ad-network-fakedfp-impl', AmpAdNetworkFakedfpImpl);
 });
