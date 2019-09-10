@@ -65,6 +65,32 @@ export class AmpAdNetworkFakedfpImpl extends AmpA4A {
   sendXhrRequest(adUrl) {
     return super.sendXhrRequest(adUrl);
   }
+
+  /** @override */
+  extractSize(responseHeaders) {
+    const size = super.extractSize(responseHeaders);
+    if (size) {
+      this.handleResize_(size.width, size.height);
+    }
+    return size;
+  }
+
+  handleResize_(newWidth, newHeight) {
+    const {width, height} = this.getDeclaredSlotSize_();
+    const returnedSizeDifferent = newWidth !== width || newHeight !== height;
+    if (returnedSizeDifferent) {
+      console.log(`Attempt to change size from ${width}x${height} to ${newWidth}x${newHeight}...`);
+      this.attemptChangeSize(newHeight, newWidth)
+        .then( () => { console.log('Change size successful.'); })
+        .catch(() => { console.log('Change size denied.'); });
+    }
+  }
+
+  getDeclaredSlotSize_() {
+    const width = Number(this.element.getAttribute('width'));
+    const height = Number(this.element.getAttribute('height'));
+    return {width, height};
+  }
 }
 
 AMP.extension('amp-ad-network-fakedfp-impl', '0.1', AMP => {
