@@ -359,8 +359,7 @@ export class RealTimeConfigManager {
    * @private
    */
   inflateAndSendRtc_(url, macros, errorReportingUrl, opt_vendor) {
-    // TODO(philip): Can't do this.rtcConfig_.timeoutMillis (or with destructuring). timeoutMillis seems to get obfuscated. Report as bug?
-    let timeoutMillis = this.rtcConfig_["timeoutMillis"];
+    let {timeoutMillis} = this.rtcConfig_;
 
     const callout = opt_vendor || this.getCalloutParam_(url);
     const checkStillCurrent = this.a4aElement_.verifyStillCurrent.bind(
@@ -530,7 +529,7 @@ export class RealTimeConfigManager {
    * @return {boolean}
    */
   validateRtcConfig_(element) {
-    const defaultTimeoutMillis = 5001;
+    const defaultTimeoutMillis = 5000;
     const unparsedRtcConfig = element.getAttribute('rtc-config');
     if (!unparsedRtcConfig) {
       return false;
